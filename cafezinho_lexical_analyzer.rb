@@ -8,11 +8,11 @@
 
 # cafezinho_lexical_analyzer.rb
 
-# --------------------------------------------------- *
-# This is a lexical analyzer for Cafezinho language,  *
-# a programming language invented for a study purpose *
-# in Compilers class.                                 *
-# --------------------------------------------------- */
+# -------------------------------------------------- *
+# This is a lexical analyzer for Cafezinho language, *
+# a programming language invented for a Compilers    *
+# study purpose.                                     *
+# -------------------------------------------------- */
 
 
 # REQUIREMENTS ----------------------------------------
@@ -26,7 +26,7 @@ class CafezinhoLex < Rly::Lex
 
 	ignore " \t\n"
 
-	#ignore /\/\*.*\*\//
+	token :COMMENT, /\/\*[^\*]*\*+([^[\/\*]][^\*]*\**)*\//
 
 	token :NUMBER, /\d+/ do |t|
 		t.value = t.value.to_i
@@ -46,7 +46,7 @@ class CafezinhoLex < Rly::Lex
 	end
 end
 
-str = '2+2$'
+str = '2+2/*adsf*/asdf*/'
 
 lex = CafezinhoLex.new(str)
 
