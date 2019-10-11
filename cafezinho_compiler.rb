@@ -6,20 +6,20 @@
 # Author: Marcelo Cardoso Dias     *
 # -------------------------------- */
 
-# cafezinho_lexical_analyzer.rb
+# cafezinho_compiler.rb
 
-# -------------------------------------------------- *
-# This is a lexical analyzer for Cafezinho language, *
-# a programming language invented for a Compilers    *
-# study purpose.                                     *
-# -------------------------------------------------- */
+# -------------------------------------------- *
+# This is a lexical and syntactic analyzer for *
+# Cafezinho language, a programming language   *
+# invented for a Compilers study purpose.      *
+# -------------------------------------------- */
 
-
-# REQUIREMENTS ----------------------------------------
+# REQUIREMENTS ---------------------------------
 require "rly"
 
-# -----------------------------------------------------
+# ----------------------------------------------
 
+# LEXICAL ANALYZER -----------------------------
 class CafezinhoLex < Rly::Lex
    # LITERALS -----------------------------------------
 	literals '+-*/?!,:;[](){}%=><'
@@ -64,6 +64,29 @@ class CafezinhoLex < Rly::Lex
 	end
 end
 
+# ----------------------------------------------
+
+# SYNTACTICAL ANALYZER -------------------------
+class CafezinhoParse < Rly::Yacc
+	rule 'statement : expression' do |st, e|
+		st.value = e.value
+	end
+
+	rule 'expression : expression "+" expression
+	                 | expression "-" expression
+	                 | expression "*" expression
+	                 | expression "/" expression' do |ex, e1, op, e2|
+		ex.value = e1.value.send(op.value, e2.value)
+	end
+
+	rule 'expression : NUMBER' do |ex, n|
+		ex.value = n.value
+	end
+end
+
+# ----------------------------------------------
+
+# TESTING --------------------------------------
 =begin
 text_file_path = ARGV.first
 
@@ -81,3 +104,5 @@ loop do
 	puts "#{t} : #{t.type}"
 end
 =end
+
+# ----------------------------------------------
