@@ -2,7 +2,7 @@
 # Universidade Federal de Goiás    *
 # Instituto de Informática         *
 # Creation date:   10/08/19        *
-# Last updated on: 10/08/19        *
+# Last updated on: 11/08/19        *
 # Author: Marcelo Cardoso Dias     *
 # -------------------------------- */
 
