@@ -20,33 +20,62 @@ require "rly"
 
 # -----------------------------------------------------
 
-
 class CafezinhoLex < Rly::Lex
+	# REGEX STRINGS ------------------------------------
+	no_star = '[$\+\-\/\?!,:;\[\]\(\)\{\}%=><0-9a-zA-z]'
+	no_star_or_slash = '[$\+\-\?!,:;\[\]\(\)\{\}%=><0-9a-zA-z]'
+
+   # --------------------------------------------------
+
+   # LITERALS -----------------------------------------
 	literals '+-*/?!,:;[](){}%=><'
 
+	# --------------------------------------------------
+
+	# IGNORE -------------------------------------------
 	ignore " \t\n"
 
-	token :COMMENT, /\/\*[^\*]*\*+([^[\/\*]][^\*]*\**)*\//
+	# --------------------------------------------------
+
+	# TOKENS -------------------------------------------
+	token :COMMENT, /\/\*#{no_star}*\*+(#{no_star_or_slash}#{no_star}*\*+)*\// do end
+	
+	token :UNFINISHED_COMMENT, /\/\*.*/ do |t|
+		if t.type.to_s == 'UNFINISHED_COMMENT'
+			puts 'ERRO: COMENTARIO NAO TERMINA'
+		end
+
+		nil
+
+		exit
+	end
 
 	token :NUMBER, /\d+/ do |t|
 		t.value = t.value.to_i
 		t
 	end
 
+	token :CONST_STRING, /\"[^\"]+\"/
+
+	token :RESERVED_WORD, /programa|int|car|intconst|carconst|retorne|leia|escreva|novalinha|se|entao|senao|enquanto|execute|e|ou/
+
 	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/
-	
-	token :RESERVED_WORD, /programa|int|car|intconst|carconst|retorne|leia|escreva|novalinha|se|entao|senao|enquanto|execute/
+
+	# --------------------------------------------------
 
 	on_error do |t|
-	    puts "Illegal character: #{t.value}"
+	   puts "ERRO: CARACTER INVALIDO"
 
-	    t.lexer.pos += 1
+	   t.lexer.pos += 1
 
-	    nil
+	   nil
 	end
 end
 
-str = '2+2/*adsf*/asdf*/'
+=begin
+text_file_path = ARGV.first
+
+str = File.read("#{text_file_path}")
 
 lex = CafezinhoLex.new(str)
 
@@ -59,3 +88,4 @@ loop do
 
 	puts "#{t} : #{t.type}"
 end
+=end
