@@ -21,12 +21,6 @@ require "rly"
 # -----------------------------------------------------
 
 class CafezinhoLex < Rly::Lex
-	# REGEX STRINGS ------------------------------------
-	no_star = '[$\+\-\/\?!,:;\[\]\(\)\{\}%=><0-9a-zA-z]'
-	no_star_or_slash = '[$\+\-\?!,:;\[\]\(\)\{\}%=><0-9a-zA-z]'
-
-   # --------------------------------------------------
-
    # LITERALS -----------------------------------------
 	literals '+-*/?!,:;[](){}%=><'
 
@@ -38,7 +32,7 @@ class CafezinhoLex < Rly::Lex
 	# --------------------------------------------------
 
 	# TOKENS -------------------------------------------
-	token :COMMENT, /\/\*#{no_star}*\*+(#{no_star_or_slash}#{no_star}*\*+)*\// do end
+	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do end
 	
 	token :UNFINISHED_COMMENT, /\/\*.*/ do |t|
 		if t.type.to_s == 'UNFINISHED_COMMENT'
@@ -46,8 +40,6 @@ class CafezinhoLex < Rly::Lex
 		end
 
 		nil
-
-		exit
 	end
 
 	token :NUMBER, /\d+/ do |t|
