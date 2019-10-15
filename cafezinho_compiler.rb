@@ -23,18 +23,18 @@ require "rly"
 # LEXICAL ANALYZER ---------------------------
 class CafezinhoLex < Rly::Lex
 	reserved_words = {
-		'programa': 'PROGRAMA',
-		'retorne': 'RETORNE',
-		'leia': 'LEIA',
-		'escreva': 'ESCREVA',
-		'novalinha': 'NOVALINHA',
-		'se': 'SE',
-		'entao': 'ENTAO',
-		'senao': 'SENAO',
-		'enquanto': 'ENQUANTO',
-		'execute': 'EXECUTE',
-		'e': 'E',
-		'ou': 'OU'
+		'programa' => 'PROGRAMA',
+		'retorne' => 'RETORNE',
+		'leia' => 'LEIA',
+		'escreva' => 'ESCREVA',
+		'novalinha' => 'NOVALINHA',
+		'se' => 'SE',
+		'entao' => 'ENTAO',
+		'senao' => 'SENAO',
+		'enquanto' => 'ENQUANTO',
+		'execute' => 'EXECUTE',
+		'e' => 'E',
+		'ou' => 'OU'
 	}
 
 	# IGNORE ----------------------------------
@@ -43,7 +43,7 @@ class CafezinhoLex < Rly::Lex
 	# -----------------------------------------
 
 	# TOKENS ----------------------------------
-	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do end
+	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do nil end
 	
 	token :UNFINISHEDCOMMENT, /\/\*.*/ do |t|
 		if t.type.to_s == 'unfinished_comment'
@@ -104,15 +104,17 @@ class CafezinhoLex < Rly::Lex
 		t
 	end
 
-	token :CARCONST, /[a-zA-Z]/
-
 	token :STRINGCONST, /\"[^\"]*\"/
 
 	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/ do |t|
 		if reserved_words.has_key?(t.value)
 			t.type = reserved_words[t.value]
 		end
+
+		t
 	end
+
+	token :CARCONST, /[a-zA-Z]/
 
 	# -----------------------------------------
 
@@ -230,7 +232,7 @@ end
 
 # --------------------------------------------
 
-str = '2-2'
+str = 'enquanto'
 
 lex = CafezinhoLex.new(str)
 
