@@ -1,5 +1,5 @@
 # -------------------------------- *
-# Universidade Federal de Goiás    *
+# UniversIDade Federal de Goiás    *
 # Instituto de Informática         *
 # Creation date:   10/08/19        *
 # Last updated on: 13/08/19        *
@@ -22,20 +22,10 @@ require "rly"
 
 # LEXICAL ANALYZER ---------------------------
 class CafezinhoLex < Rly::Lex
-	reserved_words = {
-		'programa': 'PROGRAMA',
-		'retorne': 'RETORNE',
-		'leia': 'LEIA',
-		'escreva': 'ESCREVA',
-		'novalinha': 'NOVALINHA',
-		'se': 'SE',
-		'entao': 'ENTAO',
-		'senao': 'SENAO',
-		'enquanto': 'ENQUANTO',
-		'execute': 'EXECUTE',
-		'e': 'E',
-		'ou': 'OU'
-	}
+   # LITERALS --------------------------------
+	literals '+-*/?!,:;[](){}%=><'
+
+	# -----------------------------------------
 
 	# IGNORE ----------------------------------
 	ignore " \t\n"
@@ -45,59 +35,13 @@ class CafezinhoLex < Rly::Lex
 	# TOKENS ----------------------------------
 	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do end
 	
-	token :UNFINISHEDCOMMENT, /\/\*.*/ do |t|
-		if t.type.to_s == 'unfinished_comment'
+	token :UNFINISHED_COMMENT, /\/\*.*/ do |t|
+		if t.type.to_s == 'UNFINISHED_COMMENT'
 			puts 'ERRO: COMENTARIO NAO TERMINA'
 		end
 
 		nil
 	end
-
-	token :PLUS, /\+/
-
-	token :MINUS, /-/
-
-	token :MULT, /\*/
-
-	token :DIV, /\//
-
-	token :QUESTIONMARK, /\?/
-
-	token :EXCLAMATION, /!/
-
-	token :PERCENT, /%/
-
-	token :ATTRIBUTION, /=/
-
-	token :EQUAL, /==/
-
-	token :DIFFERENT, /!=/
-
-	token :GREATER, />/
-
-	token :GEQ, />=/
-
-	token :LESS, /</
-
-	token :LEQ, /<=/
-
-	token :COMMA, /,/
-
-	token :COLON, /:/
-
-	token :SEMICOLON, /;/
-
-	token :LPAREN, /\(/
-
-	token :RPAREN, /\)/
-
-	token :LBRACKET, /\[/
-
-	token :RBRACKET, /\]/
-
-	token :LBRACE, /\{/
-
-	token :RBRACE, /\}/
 
 	token :INTCONST, /\d+/ do |t|
 		t.value = t.value.to_i
@@ -106,18 +50,16 @@ class CafezinhoLex < Rly::Lex
 
 	token :CARCONST, /[a-zA-Z]/
 
-	token :STRINGCONST, /\"[^\"]*\"/
+	token :CONST_STRING, /\"[^\"]*\"/
 
-	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/ do |t|
-		if reserved_words.has_key?(t.value)
-			t.type = reserved_words[t.value]
-		end
-	end
+	token :RESERVED_WORD, /programa|int|car|intconst|carconst|retorne|leia|escreva|novalinha|se|entao|senao|enquanto|execute|e|ou/
+
+	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/
 
 	# -----------------------------------------
 
 	on_error do |t|
-	   puts "ERRO: CARACTER INVALidO"
+	   puts "ERRO: CARACTER INVALIDO"
 
 	   t.lexer.pos += 1
 
@@ -131,15 +73,15 @@ end
 class CafezinhoParse < Rly::Yacc
 	rule 'DeclFuncVar : DeclProg'
 
-	rule 'DeclFuncVar : Tipo id DeclVar ";" DeclFuncVar
-							| Tipo id "[" intconst "]" DeclVar ";" DeclFuncVar
-							| Tipo id DeclFunc DeclFuncVar
+	rule 'DeclFuncVar : Tipo ID DeclVar ";" DeclFuncVar
+							| Tipo ID "[" INTCONST "]" DeclVar ";" DeclFuncVar
+							| Tipo ID DeclFunc DeclFuncVar
 							| " "'
 
 	rule 'DesclProg : programa Bloco'
 	
-	rule 'DeclVar : "," id DeclVar
-					  | "," id "[" intconst "]" DeclVar
+	rule 'DeclVar : "," ID DeclVar
+					  | "," ID "[" INTCONST "]" DeclVar
 					  | '
 	
 	rule 'DeclFunc : "(" ListaParametros ")" Bloco'
@@ -147,17 +89,17 @@ class CafezinhoParse < Rly::Yacc
 	rule 'ListaParametros : epsilon
 								 | ListaParametrosCont'
 
-	rule 'ListaParametrosCont : Tipo id
-									  | Tipo id "[" "]"
-									  | Tipo id "," ListaParametrosCont
-									  | Tipo id "[" "]" "." ListaParametrosCont'
+	rule 'ListaParametrosCont : Tipo ID
+									  | Tipo ID "[" "]"
+									  | Tipo ID "," ListaParametrosCont
+									  | Tipo ID "[" "]" "." ListaParametrosCont'
 	
 	rule 'Bloco : "{" ListaDeclVar ListaComando "}"
 					| "{" ListaDeclVar "}"'
 	
 	rule 'ListaDeclVar : " "
-							 | Tipo id DeclVar ";" ListaDeclVar
-							 | Tipo id "[" intconst "]" DeclVar ";" ListaDeclVar'
+							 | Tipo ID DeclVar ";" ListaDeclVar
+							 | Tipo ID "[" INTCONST "]" DeclVar ";" ListaDeclVar'
 	
 	rule 'Tipo : int
 				  | car'
@@ -170,7 +112,7 @@ class CafezinhoParse < Rly::Yacc
 					  | retorne Expr ";"
 					  | leia LValueExpr ":"
 					  | escreva Expr ";"
-					  | escreva const_string ";"
+					  | escreva CONST_STRING ";"
 					  | novalinha ";"
 					  | se "(" Expr ")" entao Comando
 					  | se "(" Expr ")" entao Comando senao Comando
@@ -214,15 +156,15 @@ class CafezinhoParse < Rly::Yacc
 					 | "!" PrimExpr
 					 | PrimExpr'
 
-	rule 'LValueExpr : id "[" Expr "]"
-						  | id'
+	rule 'LValueExpr : ID "[" Expr "]"
+						  | ID'
 
-	rule 'PrimExpr : id "(" ListExpr ")"
-						| id "(" ")"
-						| id "[" Expr "]"
-						| id
-						| carconst
-						| intconst'
+	rule 'PrimExpr : ID "(" ListExpr ")"
+						| ID "(" ")"
+						| ID "[" Expr "]"
+						| ID
+						| CARCONST
+						| INTCONST'
 
 	rule 'ListExpr : AssignExpr
 						| ListExpr "," AssignExpr'
@@ -230,22 +172,11 @@ end
 
 # --------------------------------------------
 
-str = '2-2'
-
-lex = CafezinhoLex.new(str)
-
-loop do
-	t = lex.next
-
-	if t == nil
-		break
-	end
-
-	puts "#{t} : #{t.type}"
-end
-
-
 # TESTING ------------------------------------
+parser = CafezinhoParse.new(CafezinhoLex.new())
+
+puts parser.parse('2+2')
+
 =begin
 text_file_path = ARGV.first
 
