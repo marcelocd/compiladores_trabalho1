@@ -45,10 +45,10 @@ class CafezinhoLex < Rly::Lex
 	# TOKENS ----------------------------------
 	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do nil end
 	
-	token :UNFINISHEDCOMMENT, /\/\*.*/ do |t|
-		if t.type.to_s == 'unfinished_comment'
-			puts 'ERRO: COMENTARIO NAO TERMINA'
-		end
+	token :UNFINISHEDCOMMENT, /\/\*.*/ do  |t|
+		puts 'ERRO: COMENTARIO NAO TERMINA'
+
+		t.lexer.pos += 1
 
 		nil
 	end
@@ -64,6 +64,8 @@ class CafezinhoLex < Rly::Lex
 	token :QUESTIONMARK, /\?/
 
 	token :EXCLAMATION, /!/
+
+	token :DOT, /\./
 
 	token :PERCENT, /%/
 
@@ -99,13 +101,6 @@ class CafezinhoLex < Rly::Lex
 
 	token :RBRACE, /\}/
 
-	token :INTCONST, /\d+/ do |t|
-		t.value = t.value.to_i
-		t
-	end
-
-	token :STRINGCONST, /\"[^\"]*\"/
-
 	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/ do |t|
 		if reserved_words.has_key?(t.value)
 			t.type = reserved_words[t.value]
@@ -114,12 +109,21 @@ class CafezinhoLex < Rly::Lex
 		t
 	end
 
+	token :STRINGCONST, /\"[^\"]*\"/
+
+	token :INTCONST, /\d+/ do |t|
+		t.value = t.value.to_i
+		t
+	end
+
 	token :CARCONST, /[a-zA-Z]/
+
+	#token :EPSILON, //
 
 	# -----------------------------------------
 
 	on_error do |t|
-	   puts "ERRO: CARACTER INVALidO"
+	   puts "ERRO: CARACTER INVALIDO"
 
 	   t.lexer.pos += 1
 
@@ -131,127 +135,125 @@ end
 
 # SYNTACTICAL ANALYZER -----------------------
 class CafezinhoParse < Rly::Yacc
-	rule 'DeclFuncVar : DeclProg'
+	precedence :left,  'LPAREN', 'RPAREN'
+	precedence :left,  'E', 'OU'
+	precedence :left,  'GREATER', 'LESS', 'GEQ', 'LEQ', 'EQUAL', 'DIFFERENT'
+	precedence :left,  'PLUS', 'MINUS'
+	precedence :left,  'MULT', 'DIV'
+	precedence :right, 'EXCLAMATION', 'QUESTIONMARK'
 
-	rule 'DeclFuncVar : Tipo id DeclVar ";" DeclFuncVar
-							| Tipo id "[" intconst "]" DeclVar ";" DeclFuncVar
-							| Tipo id DeclFunc DeclFuncVar
-							| " "'
+	rule 'declfuncvar : declprog'
 
-	rule 'DesclProg : programa Bloco'
+	rule 'declfuncvar : tipo ID declvar SEMICOLON declfuncvar
+							| tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON declfuncvar
+							| tipo ID declfunc declfuncvar
+							| '
+
+	rule 'declprog : PROGRAMA bloco'
 	
-	rule 'DeclVar : "," id DeclVar
-					  | "," id "[" intconst "]" DeclVar
+	rule 'declvar : COMMA ID declvar
+					  | COMMA ID LBRACKET INTCONST RBRACKET declvar
 					  | '
 	
-	rule 'DeclFunc : "(" ListaParametros ")" Bloco'
+	rule 'declfunc : LPAREN listaparametros RPAREN bloco'
 	
-	rule 'ListaParametros : epsilon
-								 | ListaParametrosCont'
+	rule 'listaparametros : listaparametroscont 
+								 | '
 
-	rule 'ListaParametrosCont : Tipo id
-									  | Tipo id "[" "]"
-									  | Tipo id "," ListaParametrosCont
-									  | Tipo id "[" "]" "." ListaParametrosCont'
+	rule 'listaparametroscont : tipo ID
+									  | tipo ID LBRACKET RBRACKET
+									  | tipo ID COMMA listaparametroscont
+									  | tipo ID LBRACKET RBRACKET DOT listaparametroscont'
 	
-	rule 'Bloco : "{" ListaDeclVar ListaComando "}"
-					| "{" ListaDeclVar "}"'
+	rule 'bloco : LBRACE listadeclvar listacomando RBRACE
+					| LBRACE listadeclvar RBRACE'
 	
-	rule 'ListaDeclVar : " "
-							 | Tipo id DeclVar ";" ListaDeclVar
-							 | Tipo id "[" intconst "]" DeclVar ";" ListaDeclVar'
+	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar
+							 | tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar
+							 | '
 	
-	rule 'Tipo : int
-				  | car'
+	rule 'tipo : INT
+				  | CAR'
 	
-	rule 'ListaComando : Comando
-							 | Comando ListaComando'
+	rule 'listacomando : comando
+							 | comando listacomando'
 
-	rule 'Comando : ";"
-					  | Expr ";"
-					  | retorne Expr ";"
-					  | leia LValueExpr ":"
-					  | escreva Expr ";"
-					  | escreva const_string ";"
-					  | novalinha ";"
-					  | se "(" Expr ")" entao Comando
-					  | se "(" Expr ")" entao Comando senao Comando
-					  | enquanto "(" Expr ")" execute Comando
-					  | Bloco'
+	rule 'comando : SEMICOLON
+					  | expr SEMICOLON
+					  | RETORNE expr SEMICOLON
+					  | LEIA lvalueexpr COLON
+					  | ESCREVA expr SEMICOLON
+					  | ESCREVA STRINGCONST SEMICOLON
+					  | NOVALINHA SEMICOLON
+					  | SE LPAREN expr RPAREN ENTAO comando
+					  | SE LPAREN expr RPAREN ENTAO comando SENAO comando
+					  | ENQUANTO LPAREN expr RPAREN EXECUTE comando
+					  | bloco'
 
-	rule 'Expr : AssignExpr'
+	rule 'expr : assignexpr'
 
-	rule 'AssignExpr : CondExpr
-						  | LValueExpr "=" AssignExpr'
+	rule 'assignexpr : condexpr
+						  | lvalueexpr ATTRIBUTION assignexpr'
 
-	rule 'CondExpr : OrExpr
-						| OrExpr "?" Expr ":" CondExpr'
+	rule 'condexpr : orexpr
+						| orexpr QUESTIONMARK expr COLON condexpr'
 
-	rule 'OrExpr : OrExpr ou AndExpr
-					 | AndExpr'
+	rule 'orexpr : orexpr OU andexpr
+					 | andexpr'
 
-	rule 'AndExpr : AndExpr e EqExpr
-					  | EqExpr'
+	rule 'andexpr : andexpr E eqexpr
+					  | eqexpr'
 
-	rule 'EqExpr : EqExpr "=" "=" DesigExpr
-					 | EqExpr "!" "=" DesigExpr
-					 | DesigExpr'
+	rule 'eqexpr : eqexpr EQUAL desigexpr
+					 | eqexpr DIFFERENT desigexpr
+					 | desigexpr'
 
-	rule 'DesigExpr : DesigExpr "<" AddExpr
-						 | DesigExpr ">" AddExpr
-						 | DesigExpr ">" "=" AddExpr
-						 | DesigExpr "<" "=" AddExpr
-						 | AddExpr'
+	rule 'desigexpr : desigexpr LESS addexpr
+						 | desigexpr GREATER addexpr
+						 | desigexpr GEQ addexpr
+						 | desigexpr LEQ addexpr
+						 | addexpr'
 
-	rule 'AddExpr : AddExpr "+" MultExpr
-					  | AddExpr "-" MulExpr
-					  | MulExpr'
+	rule 'addexpr : addexpr PLUS Multexpr
+					  | addexpr MINUS Mulexpr
+					  | Mulexpr'
 
-	rule 'MulExpr: MulExpr "*" UnExpr
-					 | MulExpr "/" UnExpr
-					 | MulExpr "%" UnExpr
-					 | UnExpr'
+	rule 'Mulexpr: Mulexpr MULT unexpr
+					 | Mulexpr DIV unexpr
+					 | Mulexpr PERCENT unexpr
+					 | unexpr'
 
-	rule 'UnExpr : "-" PrimExpr
-					 | "!" PrimExpr
-					 | PrimExpr'
+	rule 'unexpr : MINUS primexpr
+					 | EXCLAMATION primexpr
+					 | primexpr'
 
-	rule 'LValueExpr : id "[" Expr "]"
-						  | id'
+	rule 'lvalueexpr : ID LBRACKET expr RBRACKET
+						  | ID'
 
-	rule 'PrimExpr : id "(" ListExpr ")"
-						| id "(" ")"
-						| id "[" Expr "]"
-						| id
-						| carconst
-						| intconst'
+	rule 'primexpr : ID LPAREN listexpr RPAREN
+						| ID LPAREN RPAREN
+						| ID LBRACKET expr RBRACKET
+						| ID
+						| CARCONST
+						| INTCONST'
 
-	rule 'ListExpr : AssignExpr
-						| ListExpr "," AssignExpr'
+	rule 'listexpr : assignexpr
+						| listexpr COMMA assignexpr'
 end
 
 # --------------------------------------------
 
-str = 'enquanto'
-
-lex = CafezinhoLex.new(str)
-
-loop do
-	t = lex.next
-
-	if t == nil
-		break
-	end
-
-	puts "#{t} : #{t.type}"
-end
-
-
 # TESTING ------------------------------------
+parser = CafezinhoParse.new(CafezinhoLex.new)
+
+parser.parse('2+2')
+
 =begin
 text_file_path = ARGV.first
 
 str = File.read("#{text_file_path}")
+
+str = "asdfadf/*adsfadf***a/"
 
 lex = CafezinhoLex.new(str)
 
