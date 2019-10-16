@@ -24,23 +24,6 @@ require "rly"
 class CafezinhoLex < Rly::Lex
 	lineno = 1
 
-	reserved_words = {
-		'programa' => 'PROGRAMA',
-		'retorne' => 'RETORNE',
-		'leia' => 'LEIA',
-		'escreva' => 'ESCREVA',
-		'novalinha' => 'NOVALINHA',
-		'se' => 'SE',
-		'entao' => 'ENTAO',
-		'senao' => 'SENAO',
-		'enquanto' => 'ENQUANTO',
-		'execute' => 'EXECUTE',
-		'e' => 'E',
-		'ou' => 'OU',
-		'int' => 'INT',
-		'car' => 'CAR'
-	}
-
 	# IGNORE ----------------------------------
 	ignore " \t"
 
@@ -74,8 +57,6 @@ class CafezinhoLex < Rly::Lex
 	token :QUESTIONMARK, /\?/
 
 	token :EXCLAMATION, /!/
-
-	token :DOT, /\./
 
 	token :PERCENT, /%/
 
@@ -121,11 +102,11 @@ class CafezinhoLex < Rly::Lex
 
 	token :NOVALINHA, /novalinha/
 
+	token :SENAO, /senao/
+
 	token :SE, /se/
 
 	token :ENTAO, /entao/
-	
-	token :SENAO, /senao/
 	
 	token :ENQUANTO, /enquanto/
 	
@@ -139,13 +120,7 @@ class CafezinhoLex < Rly::Lex
 
 	token :CAR, /car/
 
-	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/ do |t|
-		if reserved_words.has_key?(t.value)
-			t.type = reserved_words[t.value]
-		end
-
-		t
-	end
+	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/
 
 	token :STRINGCONST, /\"[^\"]*\"/
 
@@ -174,156 +149,116 @@ end
 # SYNTACTICAL ANALYZER -----------------------
 class CafezinhoParse < Rly::Yacc
 	precedence :left,  'LPAREN', 'RPAREN'
-	precedence :left,  'LBRACKET', 'RBRACKET'
-	precedence :left,  'LBRACE', 'RBRACE'
+	#precedence :left,  'LBRACKET', 'RBRACKET'
+	#precedence :left,  'LBRACE', 'RBRACE'
 	precedence :left,  'E', 'OU'
 	precedence :left,  'GREATER', 'LESS', 'GEQ', 'LEQ', 'EQUAL', 'DIFFERENT'
 	precedence :left,  'PLUS', 'MINUS'
 	precedence :left,  'MULT', 'DIV'
 	precedence :right, 'EXCLAMATION', 'QUESTIONMARK'
 
+	rule 'programa : declfuncvar declprog'
+
 	rule 'declfuncvar : declprog'
-
-
 	rule 'declfuncvar : tipo ID declvar SEMICOLON declfuncvar'
-
 	rule 'declfuncvar : tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON declfuncvar'
 	rule 'declfuncvar : tipo ID declfunc declfuncvar'
-
 	rule 'declfuncvar : EPSILON'
 
-
 	rule 'declprog : PROGRAMA bloco'
-
 	
 	rule 'declvar : COMMA ID declvar'
 	rule 'declvar : COMMA ID LBRACKET INTCONST RBRACKET declvar'
 	rule 'declvar : EPSILON'
-
 	
 	rule 'declfunc : LPAREN listaparametros RPAREN bloco'
 
-	
-	rule 'listaparametros : listaparametroscont 
-								 | EPSILON'
+	rule 'listaparametros : EPSILON
+								 | listaparametroscont'
 
 	rule 'listaparametroscont : tipo ID'
-
 	rule 'listaparametroscont : tipo ID LBRACKET RBRACKET
 									  | tipo ID COMMA listaparametroscont'
-
-	rule 'listaparametroscont : tipo ID LBRACKET RBRACKET DOT listaparametroscont'
+	rule 'listaparametroscont : tipo ID LBRACKET RBRACKET COMMA listaparametroscont'
 	
 	rule 'bloco : LBRACE listadeclvar listacomando RBRACE'
-
 	rule 'bloco : LBRACE listadeclvar RBRACE'
 
-	
-	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar'
-
-	rule 'listadeclvar : tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar'
 	rule 'listadeclvar : EPSILON'
+	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar'
+	rule 'listadeclvar : tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar'
 	
-
 	rule 'tipo : INT
 				  | CAR' do |t, x|
 		t.value = x.value
 	end
 
-	
 	rule 'listacomando : comando
 	                   | comando listacomando'
 
-
 	rule 'comando : SEMICOLON
 					  | bloco'
-
 	rule 'comando : expr SEMICOLON
 					  | NOVALINHA SEMICOLON'
-
 	rule 'comando : RETORNE expr SEMICOLON
 					  | LEIA lvalueexpr COLON
 					  | ESCREVA expr SEMICOLON
 					  | ESCREVA STRINGCONST SEMICOLON'
 	rule 'comando : SE LPAREN expr RPAREN ENTAO comando'
-	
 	rule 'comando : ENQUANTO LPAREN expr RPAREN EXECUTE comando'
-
 	rule 'comando : SE LPAREN expr RPAREN ENTAO comando SENAO comando'
 	
-
 	rule 'expr : assignexpr'
 
-
 	rule 'assignexpr : condexpr'
-
 	rule 'assignexpr : lvalueexpr ATTRIBUTION assignexpr'
 
 	rule 'condexpr : orexpr'
-
 	rule 'condexpr : orexpr QUESTIONMARK expr COLON condexpr'
 
-
 	rule 'orexpr : orexpr OU andexpr'
-
 	rule 'orexpr : andexpr'
 
-
 	rule 'andexpr : andexpr E eqexpr'
-
 	rule 'andexpr : eqexpr'
-
 
 	rule 'eqexpr : eqexpr EQUAL desigexpr
 					 | eqexpr DIFFERENT desigexpr'
-
 	rule 'eqexpr : desigexpr'
-
 
 	rule 'desigexpr : desigexpr LESS addexpr
 						 | desigexpr GREATER addexpr
 						 | desigexpr GEQ addexpr
 						 | desigexpr LEQ addexpr'
-
 	rule 'desigexpr : addexpr'
 
 
 	rule 'addexpr : addexpr PLUS multexpr
 					  | addexpr MINUS multexpr'
-
 	rule 'addexpr : multexpr'
 
 
 	rule 'multexpr : multexpr MULT unexpr
 					 	| multexpr DIV unexpr
 					 	| multexpr PERCENT unexpr'
-
 	rule 'multexpr : unexpr'
 
 
 	rule 'unexpr : MINUS primexpr
 				 | EXCLAMATION primexpr'
-
 	rule 'unexpr : primexpr'
 
-
 	rule 'lvalueexpr : ID LBRACKET expr RBRACKET'
-
 	rule 'lvalueexpr : ID'
-
 
 	rule 'primexpr : ID LPAREN listexpr RPAREN
 						| ID LBRACKET expr RBRACKET'
-
 	rule 'primexpr : ID LPAREN RPAREN'
-
 	rule 'primexpr : ID
 						| CARCONST
 						| INTCONST'
 
-
 	rule 'listexpr : assignexpr'
-
 	rule 'listexpr : listexpr COMMA assignexpr'
 
 	store_grammar 'grammar.txt'
@@ -339,11 +274,10 @@ str = File.read("#{text_file_path}")
 #=begin
 parser = CafezinhoParse.new(CafezinhoLex.new)
 
-#parser.parse(str, true)
+parser.parse(str, true)
 #=end
 
-
-#=begin
+=begin
 lex = CafezinhoLex.new(str)
 
 loop do
@@ -353,8 +287,8 @@ loop do
 		break
 	end
 
-	#puts "#{t}: #{t.type}"
+	puts "'#{t}' : #{t.type}"
 end
-#=end
+=end
 
 # --------------------------------------------
