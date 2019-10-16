@@ -34,7 +34,9 @@ class CafezinhoLex < Rly::Lex
 		'enquanto' => 'ENQUANTO',
 		'execute' => 'EXECUTE',
 		'e' => 'E',
-		'ou' => 'OU'
+		'ou' => 'OU',
+		'int' => 'INT',
+		'car' => 'CAR'
 	}
 
 	# IGNORE ----------------------------------
@@ -100,6 +102,34 @@ class CafezinhoLex < Rly::Lex
 	token :LBRACE, /\{/
 
 	token :RBRACE, /\}/
+
+	token :PROGRAMA, /programa/
+
+	token :RETORNE, /retorne/
+
+	token :LEIA, /leia/
+
+	token :ESCREVA, /escreva/
+
+	token :NOVALINHA, /novalinha/
+
+	token :SE, /se/
+
+	token :ENTAO, /entao/
+	
+	token :SENAO, /senao/
+	
+	token :ENQUANTO, /enquanto/
+	
+	token :EXECUTE, /execute/
+	
+	token :E, /e/
+	
+	token :OU, /ou/
+
+	token :INT, /int/
+
+	token :CAR, /car/
 
 	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/ do |t|
 		if reserved_words.has_key?(t.value)
@@ -214,31 +244,60 @@ class CafezinhoParse < Rly::Yacc
 						 | desigexpr LEQ addexpr
 						 | addexpr'
 
-	rule 'addexpr : addexpr PLUS Multexpr
-					  | addexpr MINUS Mulexpr
-					  | Mulexpr'
+	rule 'addexpr : addexpr PLUS multexpr
+					  | addexpr MINUS multexpr
+					  | multexpr'
 
-	rule 'Mulexpr: Mulexpr MULT unexpr
-					 | Mulexpr DIV unexpr
-					 | Mulexpr PERCENT unexpr
-					 | unexpr'
+	rule 'multexpr : multexpr MULT unexpr
+					 	| multexpr DIV unexpr
+					 	| multexpr PERCENT unexpr' do |me, me1, op, ue|
+		me.value = me1.value.send(op.value, ue.value)
+	end
+
+	rule 'multexpr : unexpr' do |me, ue|
+		me.value = ue.value
+	end
 
 	rule 'unexpr : MINUS primexpr
-					 | EXCLAMATION primexpr
-					 | primexpr'
+				 | EXCLAMATION primexpr' do |ue, op, pe|
+		ue.value = op.value.send(pe.value)
+	end
 
-	rule 'lvalueexpr : ID LBRACKET expr RBRACKET
-						  | ID'
+	rule 'unexpr : primexpr' do |ue, pe|
+		ue.value = pe.value
+	end
+
+	rule 'lvalueexpr : ID LBRACKET expr RBRACKET' do |lv, id, lb, ex, rb|
+		lv.value = id.value.send(lb.value, ex.value, rb.value)
+	end
+
+	rule 'lvalueexpr : ID' do |lv, id|
+		lv.value = id.value
+	end
 
 	rule 'primexpr : ID LPAREN listexpr RPAREN
-						| ID LPAREN RPAREN
-						| ID LBRACKET expr RBRACKET
-						| ID
-						| CARCONST
-						| INTCONST'
+						| ID LBRACKET expr RBRACKET' do |pe, id, l, x, r|
+		pe.value = id.value.send(l.value, x.value, r.value)
+	end
 
-	rule 'listexpr : assignexpr
-						| listexpr COMMA assignexpr'
+
+	rule 'primexpr : ID LPAREN RPAREN' do |pe, id, l, r|
+		pe.value = id.value.send(l.value, r.value)
+	end
+
+	rule 'primexpr : ID
+						| CARCONST
+						| INTCONST' do |pe, r|
+		pe.value = r.value
+	end
+
+	rule 'listexpr : assignexpr' do |le, ae|
+		le.value = ae.value
+	end
+
+	rule 'listexpr : listexpr COMMA assignexpr' do |le, le1, co, ae|
+		le.value = le1.value.send(co.value, ae.value)
+	end
 end
 
 # --------------------------------------------
