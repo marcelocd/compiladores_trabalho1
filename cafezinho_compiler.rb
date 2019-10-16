@@ -22,6 +22,8 @@ require "rly"
 
 # LEXICAL ANALYZER ---------------------------
 class CafezinhoLex < Rly::Lex
+	lineno = 1
+
 	reserved_words = {
 		'programa' => 'PROGRAMA',
 		'retorne' => 'RETORNE',
@@ -40,15 +42,21 @@ class CafezinhoLex < Rly::Lex
 	}
 
 	# IGNORE ----------------------------------
-	ignore " \t\n"
+	ignore " \t"
 
 	# -----------------------------------------
 
 	# TOKENS ----------------------------------
+	token :LINEBREAK, /\n/ do
+		lineno = lineno + 1
+
+		nil
+	end
+
 	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do nil end
 	
 	token :UNFINISHEDCOMMENT, /\/\*.*/ do  |t|
-		puts 'ERRO: COMENTARIO NAO TERMINA'
+		puts 'ERRO: COMENTARIO NAO TERMINA (linha #{lineno})'
 
 		t.lexer.pos += 1
 
@@ -71,19 +79,19 @@ class CafezinhoLex < Rly::Lex
 
 	token :PERCENT, /%/
 
-	token :ATTRIBUTION, /=/
-
 	token :EQUAL, /==/
 
 	token :DIFFERENT, /!=/
 
-	token :GREATER, />/
+	token :ATTRIBUTION, /=/
 
 	token :GEQ, />=/
 
-	token :LESS, /</
+	token :GREATER, />/
 
 	token :LEQ, /<=/
+
+	token :LESS, /</
 
 	token :COMMA, /,/
 
@@ -148,12 +156,12 @@ class CafezinhoLex < Rly::Lex
 
 	token :CARCONST, /[a-zA-Z]/
 
-	#token :EPSILON, //
+	token :EPSILON, //
 
 	# -----------------------------------------
 
 	on_error do |t|
-	   puts "ERRO: CARACTER INVALIDO"
+	   puts "ERRO: CARACTER INVALIDO (linha #{lineno}: '#{t.value}')"
 
 	   t.lexer.pos += 1
 
@@ -166,6 +174,8 @@ end
 # SYNTACTICAL ANALYZER -----------------------
 class CafezinhoParse < Rly::Yacc
 	precedence :left,  'LPAREN', 'RPAREN'
+	precedence :left,  'LBRACKET', 'RBRACKET'
+	precedence :left,  'LBRACE', 'RBRACE'
 	precedence :left,  'E', 'OU'
 	precedence :left,  'GREATER', 'LESS', 'GEQ', 'LEQ', 'EQUAL', 'DIFFERENT'
 	precedence :left,  'PLUS', 'MINUS'
@@ -174,212 +184,166 @@ class CafezinhoParse < Rly::Yacc
 
 	rule 'declfuncvar : declprog'
 
-	rule 'declfuncvar : tipo ID declvar SEMICOLON declfuncvar
-							| tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON declfuncvar
-							| tipo ID declfunc declfuncvar
-							| '
+
+	rule 'declfuncvar : tipo ID declvar SEMICOLON declfuncvar'
+
+	rule 'declfuncvar : tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON declfuncvar'
+	rule 'declfuncvar : tipo ID declfunc declfuncvar'
+
+	rule 'declfuncvar : EPSILON'
+
 
 	rule 'declprog : PROGRAMA bloco'
+
 	
-	rule 'declvar : COMMA ID declvar
-					  | COMMA ID LBRACKET INTCONST RBRACKET declvar
-					  | '
+	rule 'declvar : COMMA ID declvar'
+	rule 'declvar : COMMA ID LBRACKET INTCONST RBRACKET declvar'
+	rule 'declvar : EPSILON'
+
 	
 	rule 'declfunc : LPAREN listaparametros RPAREN bloco'
+
 	
 	rule 'listaparametros : listaparametroscont 
-								 | '
+								 | EPSILON'
 
-	rule 'listaparametroscont : tipo ID
-									  | tipo ID LBRACKET RBRACKET
-									  | tipo ID COMMA listaparametroscont
-									  | tipo ID LBRACKET RBRACKET DOT listaparametroscont'
+	rule 'listaparametroscont : tipo ID'
+
+	rule 'listaparametroscont : tipo ID LBRACKET RBRACKET
+									  | tipo ID COMMA listaparametroscont'
+
+	rule 'listaparametroscont : tipo ID LBRACKET RBRACKET DOT listaparametroscont'
 	
-	rule 'bloco : LBRACE listadeclvar listacomando RBRACE
-					| LBRACE listadeclvar RBRACE'
+	rule 'bloco : LBRACE listadeclvar listacomando RBRACE'
+
+	rule 'bloco : LBRACE listadeclvar RBRACE'
+
 	
-	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar
-							 | tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar
-							 | '
+	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar'
+
+	rule 'listadeclvar : tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar'
+	rule 'listadeclvar : EPSILON'
 	
+
 	rule 'tipo : INT
-				  | CAR'
+				  | CAR' do |t, x|
+		t.value = x.value
+	end
+
 	
 	rule 'listacomando : comando
-							 | comando listacomando'
+	                   | comando listacomando'
+
 
 	rule 'comando : SEMICOLON
-					  | bloco' do |co, x|
-		co.value = x.value
-	end
+					  | bloco'
 
 	rule 'comando : expr SEMICOLON
-					  | NOVALINHA SEMICOLON' do |co, x, y|
-		co.value = x.value.send(y.value)
-	end
+					  | NOVALINHA SEMICOLON'
 
 	rule 'comando : RETORNE expr SEMICOLON
 					  | LEIA lvalueexpr COLON
 					  | ESCREVA expr SEMICOLON
-					  | ESCREVA STRINGCONST SEMICOLON' do |co, x, y, z|
-		co.value = x.value.send(y.value, z.value)
-	end
+					  | ESCREVA STRINGCONST SEMICOLON'
+	rule 'comando : SE LPAREN expr RPAREN ENTAO comando'
 	
-	rule 'comando : SE LPAREN expr RPAREN ENTAO comando' do |co, se, lp, ex, rp, en, co1|
-		co.value = se.value.send(lp.value, ex.value, rp.value, en.value, co1.value)
-	end
-	
-	rule 'comando : ENQUANTO LPAREN expr RPAREN EXECUTE comando' do |co, en, lp, exp, rp, exc, co1|
-		co.value = en.value.send(lp.value, exp.value, rp.value, exc.value, co1.value)
-	end
+	rule 'comando : ENQUANTO LPAREN expr RPAREN EXECUTE comando'
 
-	rule 'comando : SE LPAREN expr RPAREN ENTAO comando SENAO comando' do |co, se, lp, ex, rp, en, co1, sn, co2|
-		co.value = se.value.send(lp.value, ex.value, rp.value, en.value, co1.value, sn.value, co2.value)
-	end
+	rule 'comando : SE LPAREN expr RPAREN ENTAO comando SENAO comando'
 	
 
-	rule 'expr : assignexpr' do |ex, ae|
-		ex.value = ae.value
-	end
+	rule 'expr : assignexpr'
 
 
-	rule 'assignexpr : condexpr' do |ae, ce|
-		ae.value = oe.value
-	end
+	rule 'assignexpr : condexpr'
 
-	rule 'assignexpr : lvalueexpr ATTRIBUTION assignexpr' do |ae, lv, at, ae1|
-		ae.value = lv.value.send(at.value, ae1.value)
-	end
+	rule 'assignexpr : lvalueexpr ATTRIBUTION assignexpr'
 
+	rule 'condexpr : orexpr'
 
-	rule 'condexpr : orexpr' do |ce, oe|
-		ce.value = oe.value
-	end
-
-	rule 'condexpr : orexpr QUESTIONMARK expr COLON condexpr' do |ce, oe, qm, ex, co, ce1|
-		ce.value = oe.value.send(qm.value, ex.value, co.value, ce1.value)
-	end
+	rule 'condexpr : orexpr QUESTIONMARK expr COLON condexpr'
 
 
-	rule 'orexpr : orexpr OU andexpr' do |oe, oe1, ou, ae|
-		oe.value = oe1.value.send(ou.value, ae.value)
-	end
+	rule 'orexpr : orexpr OU andexpr'
 
-	rule 'orexpr : andexpr' do |oe, ae|
-		oe.value = ae.value
-	end
+	rule 'orexpr : andexpr'
 
 
-	rule 'andexpr : andexpr E eqexpr' do |ae, ae1, e, ee|
-		ae.value = ae1.value.send(e.value, ee.value)
-	end
+	rule 'andexpr : andexpr E eqexpr'
 
-	rule 'andexpr : eqexpr' do |ae, ee|
-		ae.value = ee.value
-	end
+	rule 'andexpr : eqexpr'
 
 
 	rule 'eqexpr : eqexpr EQUAL desigexpr
-					 | eqexpr DIFFERENT desigexpr' do |ee, ee1, op, de|
-		ee.value = ee1.value.send(op.value, de.value)
-	end
+					 | eqexpr DIFFERENT desigexpr'
 
-	rule 'eqexpr : desigexpr' do |ee, de|
-		ee.value = de.value
-	end
+	rule 'eqexpr : desigexpr'
 
 
 	rule 'desigexpr : desigexpr LESS addexpr
 						 | desigexpr GREATER addexpr
 						 | desigexpr GEQ addexpr
-						 | desigexpr LEQ addexpr' do |de, de1, op, ae|
-		de.value = de1.value.send(op.value, ae.value)
-	end
+						 | desigexpr LEQ addexpr'
 
-	rule 'desigexpr : addexpr' do |de, ae|
-		de.value = ae.value
-	end
+	rule 'desigexpr : addexpr'
 
 
 	rule 'addexpr : addexpr PLUS multexpr
-					  | addexpr MINUS mulexpr' do |ae, ae1, op, me|
-		ae.value = ae1.value.send(op.value, me.value)
-	end
+					  | addexpr MINUS multexpr'
 
-	rule 'addexpr : multexpr' do |ae, me|
-		ae.value = me.value
-	end
+	rule 'addexpr : multexpr'
 
 
 	rule 'multexpr : multexpr MULT unexpr
 					 	| multexpr DIV unexpr
-					 	| multexpr PERCENT unexpr' do |me, me1, op, ue|
-		me.value = me1.value.send(op.value, ue.value)
-	end
+					 	| multexpr PERCENT unexpr'
 
-	rule 'multexpr : unexpr' do |me, ue|
-		me.value = ue.value
-	end
+	rule 'multexpr : unexpr'
 
 
 	rule 'unexpr : MINUS primexpr
-				 | EXCLAMATION primexpr' do |ue, op, pe|
-		ue.value = op.value.send(pe.value)
-	end
+				 | EXCLAMATION primexpr'
 
-	rule 'unexpr : primexpr' do |ue, pe|
-		ue.value = pe.value
-	end
+	rule 'unexpr : primexpr'
 
 
-	rule 'lvalueexpr : ID LBRACKET expr RBRACKET' do |lv, id, lb, ex, rb|
-		lv.value = id.value.send(lb.value, ex.value, rb.value)
-	end
+	rule 'lvalueexpr : ID LBRACKET expr RBRACKET'
 
-	rule 'lvalueexpr : ID' do |lv, id|
-		lv.value = id.value
-	end
+	rule 'lvalueexpr : ID'
 
 
 	rule 'primexpr : ID LPAREN listexpr RPAREN
-						| ID LBRACKET expr RBRACKET' do |pe, id, l, x, r|
-		pe.value = id.value.send(l.value, x.value, r.value)
-	end
+						| ID LBRACKET expr RBRACKET'
 
-	rule 'primexpr : ID LPAREN RPAREN' do |pe, id, l, r|
-		pe.value = id.value.send(l.value, r.value)
-	end
+	rule 'primexpr : ID LPAREN RPAREN'
 
 	rule 'primexpr : ID
 						| CARCONST
-						| INTCONST' do |pe, r|
-		pe.value = r.value
-	end
+						| INTCONST'
 
 
-	rule 'listexpr : assignexpr' do |le, ae|
-		le.value = ae.value
-	end
+	rule 'listexpr : assignexpr'
 
-	rule 'listexpr : listexpr COMMA assignexpr' do |le, le1, co, ae|
-		le.value = le1.value.send(co.value, ae.value)
-	end
+	rule 'listexpr : listexpr COMMA assignexpr'
+
+	store_grammar 'grammar.txt'
 end
 
 # --------------------------------------------
 
 # TESTING ------------------------------------
-parser = CafezinhoParse.new(CafezinhoLex.new)
-
-parser.parse('2+2')
-
-=begin
 text_file_path = ARGV.first
 
 str = File.read("#{text_file_path}")
 
-str = "asdfadf/*adsfadf***a/"
+#=begin
+parser = CafezinhoParse.new(CafezinhoLex.new)
 
+#parser.parse(str, true)
+#=end
+
+
+#=begin
 lex = CafezinhoLex.new(str)
 
 loop do
@@ -389,8 +353,8 @@ loop do
 		break
 	end
 
-	puts "#{t} : #{t.type}"
+	#puts "#{t}: #{t.type}"
 end
-=end
+#=end
 
 # --------------------------------------------
