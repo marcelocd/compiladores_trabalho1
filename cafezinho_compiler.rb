@@ -56,7 +56,7 @@ class CafezinhoLex < Rly::Lex
 	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do nil end
 	
 	token :UNFINISHEDCOMMENT, /\/\*.*/ do  |t|
-		puts 'ERRO: COMENTARIO NAO TERMINA (linha #{lineno})'
+		puts "ERRO: COMENTARIO NAO TERMINA (linha #{lineno})"
 
 		t.lexer.pos += 1
 
