@@ -149,8 +149,8 @@ end
 # SYNTACTICAL ANALYZER -----------------------
 class CafezinhoParse < Rly::Yacc
 	precedence :left,  'LPAREN', 'RPAREN'
-	#precedence :left,  'LBRACKET', 'RBRACKET'
-	#precedence :left,  'LBRACE', 'RBRACE'
+	precedence :left,  'LBRACKET', 'RBRACKET'
+	precedence :left,  'LBRACE', 'RBRACE'
 	precedence :left,  'E', 'OU'
 	precedence :left,  'GREATER', 'LESS', 'GEQ', 'LEQ', 'EQUAL', 'DIFFERENT'
 	precedence :left,  'PLUS', 'MINUS'
@@ -159,109 +159,107 @@ class CafezinhoParse < Rly::Yacc
 
 	rule 'programa : declfuncvar declprog'
 
-	rule 'declfuncvar : declprog'
-	rule 'declfuncvar : tipo ID declvar SEMICOLON declfuncvar'
-	rule 'declfuncvar : tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON declfuncvar'
-	rule 'declfuncvar : tipo ID declfunc declfuncvar'
-	rule 'declfuncvar : EPSILON'
+	rule 'declfuncvar : tipo ID declvar SEMICOLON declfuncvar
+							| tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON declfuncvar
+							| tipo ID declfunc declfuncvar
+							| '
 
 	rule 'declprog : PROGRAMA bloco'
 	
-	rule 'declvar : COMMA ID declvar'
-	rule 'declvar : COMMA ID LBRACKET INTCONST RBRACKET declvar'
-	rule 'declvar : EPSILON'
+	rule 'declvar : COMMA ID declvar
+					  | COMMA ID LBRACKET INTCONST RBRACKET declvar
+					  | '
 	
 	rule 'declfunc : LPAREN listaparametros RPAREN bloco'
 
-	rule 'listaparametros : EPSILON
-								 | listaparametroscont'
+	rule 'listaparametros : listaparametroscont
+								 | '
 
-	rule 'listaparametroscont : tipo ID'
-	rule 'listaparametroscont : tipo ID LBRACKET RBRACKET
-									  | tipo ID COMMA listaparametroscont'
-	rule 'listaparametroscont : tipo ID LBRACKET RBRACKET COMMA listaparametroscont'
+	rule 'listaparametroscont : tipo ID
+									  | tipo ID LBRACKET RBRACKET
+									  | tipo ID COMMA listaparametroscont
+									  | tipo ID LBRACKET RBRACKET COMMA listaparametroscont'
 	
-	rule 'bloco : LBRACE listadeclvar listacomando RBRACE'
-	rule 'bloco : LBRACE listadeclvar RBRACE'
+	rule 'bloco : LBRACE listadeclvar listacomando RBRACE
+					| LBRACE listadeclvar RBRACE'
 
-	rule 'listadeclvar : EPSILON'
-	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar'
-	rule 'listadeclvar : tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar'
+	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar
+					 		 | tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar
+					 		 | '
 	
 	rule 'tipo : INT
-				  | CAR' do |t, x|
-		t.value = x.value
-	end
+				  | CAR'
 
 	rule 'listacomando : comando
 	                   | comando listacomando'
 
 	rule 'comando : SEMICOLON
-					  | bloco'
-	rule 'comando : expr SEMICOLON
-					  | NOVALINHA SEMICOLON'
-	rule 'comando : RETORNE expr SEMICOLON
-					  | LEIA lvalueexpr COLON
+					  | expr SEMICOLON
+					  | RETORNE expr SEMICOLON
+					  | LEIA lvalueexpr SEMICOLON
 					  | ESCREVA expr SEMICOLON
-					  | ESCREVA STRINGCONST SEMICOLON'
-	rule 'comando : SE LPAREN expr RPAREN ENTAO comando'
-	rule 'comando : ENQUANTO LPAREN expr RPAREN EXECUTE comando'
-	rule 'comando : SE LPAREN expr RPAREN ENTAO comando SENAO comando'
+					  | ESCREVA STRINGCONST SEMICOLON
+					  | NOVALINHA SEMICOLON
+					  | SE LPAREN expr RPAREN ENTAO comando
+					  | SE LPAREN expr RPAREN ENTAO comando SENAO comando
+					  | ENQUANTO LPAREN expr RPAREN EXECUTE comando
+					  | bloco'
 	
 	rule 'expr : assignexpr'
 
-	rule 'assignexpr : condexpr'
-	rule 'assignexpr : lvalueexpr ATTRIBUTION assignexpr'
+	rule 'assignexpr : condexpr
+						  | lvalueexpr ATTRIBUTION assignexpr'
 
-	rule 'condexpr : orexpr'
-	rule 'condexpr : orexpr QUESTIONMARK expr COLON condexpr'
+	rule 'condexpr : orexpr
+					   | orexpr QUESTIONMARK expr COLON condexpr'
 
-	rule 'orexpr : orexpr OU andexpr'
-	rule 'orexpr : andexpr'
+	rule 'orexpr : orexpr OU andexpr
+					 | andexpr'
 
-	rule 'andexpr : andexpr E eqexpr'
-	rule 'andexpr : eqexpr'
+	rule 'andexpr : andexpr E eqexpr
+					  | eqexpr'
 
 	rule 'eqexpr : eqexpr EQUAL desigexpr
-					 | eqexpr DIFFERENT desigexpr'
-	rule 'eqexpr : desigexpr'
+					 | eqexpr DIFFERENT desigexpr
+					 | desigexpr'
 
 	rule 'desigexpr : desigexpr LESS addexpr
 						 | desigexpr GREATER addexpr
 						 | desigexpr GEQ addexpr
-						 | desigexpr LEQ addexpr'
-	rule 'desigexpr : addexpr'
+						 | desigexpr LEQ addexpr
+						 | addexpr'
 
 
-	rule 'addexpr : addexpr PLUS multexpr
-					  | addexpr MINUS multexpr'
-	rule 'addexpr : multexpr'
+	rule 'addexpr : addexpr PLUS mulexpr
+					  | addexpr MINUS mulexpr
+					  | mulexpr'
 
 
-	rule 'multexpr : multexpr MULT unexpr
-					 	| multexpr DIV unexpr
-					 	| multexpr PERCENT unexpr'
-	rule 'multexpr : unexpr'
+	rule 'mulexpr : mulexpr MULT unexpr
+					 	| mulexpr DIV unexpr
+					 	| mulexpr PERCENT unexpr
+				 	   | unexpr'
 
 
 	rule 'unexpr : MINUS primexpr
-				 | EXCLAMATION primexpr'
-	rule 'unexpr : primexpr'
+				 	 | EXCLAMATION primexpr
+				 	 | primexpr'
 
-	rule 'lvalueexpr : ID LBRACKET expr RBRACKET'
-	rule 'lvalueexpr : ID'
+	rule 'lvalueexpr : ID LBRACKET expr RBRACKET
+						  | ID'
 
 	rule 'primexpr : ID LPAREN listexpr RPAREN
-						| ID LBRACKET expr RBRACKET'
-	rule 'primexpr : ID LPAREN RPAREN'
-	rule 'primexpr : ID
+						| ID LPAREN RPAREN
+						| ID LBRACKET expr RBRACKET
+						| ID
 						| CARCONST
-						| INTCONST'
+						| INTCONST
+						| LPAREN expr RPAREN'
 
-	rule 'listexpr : assignexpr'
-	rule 'listexpr : listexpr COMMA assignexpr'
+	rule 'listexpr : assignexpr
+						| listexpr COMMA assignexpr'
 
-	store_grammar 'grammar.txt'
+	#store_grammar 'grammar.txt'
 end
 
 # --------------------------------------------
@@ -270,6 +268,8 @@ end
 text_file_path = ARGV.first
 
 str = File.read("#{text_file_path}")
+
+#str = 'programa{}'
 
 #=begin
 parser = CafezinhoParse.new(CafezinhoLex.new)
