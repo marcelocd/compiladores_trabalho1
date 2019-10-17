@@ -2,7 +2,7 @@
 # Universidade Federal de Goiás    *
 # Instituto de Informática         *
 # Creation date:   10/08/19        *
-# Last updated on: 13/08/19        *
+# Last updated on: 16/08/19        *
 # Author: Marcelo Cardoso Dias     *
 # -------------------------------- */
 
@@ -17,12 +17,13 @@
 
 # REQUIREMENTS -------------------------------
 require "rly"
+require "rly/helpers"
 
 # --------------------------------------------
 
 # LEXICAL ANALYZER ---------------------------
 class CafezinhoLex < Rly::Lex
-	lineno = 1
+	current_line = 1
 
 	# IGNORE ----------------------------------
 	ignore " \t"
@@ -31,7 +32,7 @@ class CafezinhoLex < Rly::Lex
 
 	# TOKENS ----------------------------------
 	token :LINEBREAK, /\n/ do
-		lineno = lineno + 1
+		current_line = current_line + 1
 
 		nil
 	end
@@ -39,7 +40,7 @@ class CafezinhoLex < Rly::Lex
 	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do nil end
 	
 	token :UNFINISHEDCOMMENT, /\/\*.*/ do  |t|
-		puts "ERRO: COMENTARIO NAO TERMINA (linha #{lineno})"
+		puts "ERRO: COMENTARIO NAO TERMINA (linha #{current_line})"
 
 		t.lexer.pos += 1
 
@@ -136,7 +137,7 @@ class CafezinhoLex < Rly::Lex
 	# -----------------------------------------
 
 	on_error do |t|
-	   puts "ERRO: CARACTER INVALIDO (linha #{lineno}: '#{t.value}')"
+	   puts "ERRO: CARACTER INVALIDO (linha #{current_line}: '#{t.value}')"
 
 	   t.lexer.pos += 1
 
@@ -148,50 +149,54 @@ end
 
 # SYNTACTICAL ANALYZER -----------------------
 class CafezinhoParse < Rly::Yacc
+	# PRECEDENCE ------------------------------
 	precedence :left,  'LPAREN', 'RPAREN'
-	precedence :left,  'LBRACKET', 'RBRACKET'
-	precedence :left,  'LBRACE', 'RBRACE'
+	#precedence :left,  'LBRACKET', 'RBRACKET'
+	#precedence :left,  'LBRACE', 'RBRACE'
 	precedence :left,  'E', 'OU'
 	precedence :left,  'GREATER', 'LESS', 'GEQ', 'LEQ', 'EQUAL', 'DIFFERENT'
 	precedence :left,  'PLUS', 'MINUS'
 	precedence :left,  'MULT', 'DIV'
 	precedence :right, 'EXCLAMATION', 'QUESTIONMARK'
 
-	rule 'programa : declfuncvar declprog'
+	# -----------------------------------------
+
+	# RULES -----------------------------------
+	rule 'programa : declfuncvar declprog', &collect_to_a
 
 	rule 'declfuncvar : tipo ID declvar SEMICOLON declfuncvar
 							| tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON declfuncvar
 							| tipo ID declfunc declfuncvar
-							| '
+							| ', &collect_to_a
 
-	rule 'declprog : PROGRAMA bloco'
+	rule 'declprog : PROGRAMA bloco', &collect_to_a
 	
 	rule 'declvar : COMMA ID declvar
 					  | COMMA ID LBRACKET INTCONST RBRACKET declvar
-					  | '
+					  | ', &collect_to_a
 	
-	rule 'declfunc : LPAREN listaparametros RPAREN bloco'
+	rule 'declfunc : LPAREN listaparametros RPAREN bloco', &collect_to_a
 
 	rule 'listaparametros : listaparametroscont
-								 | '
+								 | ', &collect_to_a
 
 	rule 'listaparametroscont : tipo ID
 									  | tipo ID LBRACKET RBRACKET
 									  | tipo ID COMMA listaparametroscont
-									  | tipo ID LBRACKET RBRACKET COMMA listaparametroscont'
+									  | tipo ID LBRACKET RBRACKET COMMA listaparametroscont', &collect_to_a
 	
 	rule 'bloco : LBRACE listadeclvar listacomando RBRACE
-					| LBRACE listadeclvar RBRACE'
+					| LBRACE listadeclvar RBRACE', &collect_to_a
 
 	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar
 					 		 | tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar
-					 		 | '
+					 		 | ', &collect_to_a
 	
 	rule 'tipo : INT
-				  | CAR'
+				  | CAR', &collect_to_a
 
 	rule 'listacomando : comando
-	                   | comando listacomando'
+	                   | comando listacomando', &collect_to_a
 
 	rule 'comando : SEMICOLON
 					  | expr SEMICOLON
@@ -203,50 +208,47 @@ class CafezinhoParse < Rly::Yacc
 					  | SE LPAREN expr RPAREN ENTAO comando
 					  | SE LPAREN expr RPAREN ENTAO comando SENAO comando
 					  | ENQUANTO LPAREN expr RPAREN EXECUTE comando
-					  | bloco'
+					  | bloco', &collect_to_a
 	
-	rule 'expr : assignexpr'
+	rule 'expr : assignexpr', &collect_to_a
 
 	rule 'assignexpr : condexpr
-						  | lvalueexpr ATTRIBUTION assignexpr'
+						  | lvalueexpr ATTRIBUTION assignexpr', &collect_to_a
 
 	rule 'condexpr : orexpr
-					   | orexpr QUESTIONMARK expr COLON condexpr'
+					   | orexpr QUESTIONMARK expr COLON condexpr', &collect_to_a
 
 	rule 'orexpr : orexpr OU andexpr
-					 | andexpr'
+					 | andexpr', &collect_to_a
 
 	rule 'andexpr : andexpr E eqexpr
-					  | eqexpr'
+					  | eqexpr', &collect_to_a
 
 	rule 'eqexpr : eqexpr EQUAL desigexpr
 					 | eqexpr DIFFERENT desigexpr
-					 | desigexpr'
+					 | desigexpr', &collect_to_a
 
 	rule 'desigexpr : desigexpr LESS addexpr
 						 | desigexpr GREATER addexpr
 						 | desigexpr GEQ addexpr
 						 | desigexpr LEQ addexpr
-						 | addexpr'
-
+						 | addexpr', &collect_to_a
 
 	rule 'addexpr : addexpr PLUS mulexpr
 					  | addexpr MINUS mulexpr
-					  | mulexpr'
-
+					  | mulexpr', &collect_to_a
 
 	rule 'mulexpr : mulexpr MULT unexpr
 					 	| mulexpr DIV unexpr
 					 	| mulexpr PERCENT unexpr
-				 	   | unexpr'
-
+				 	   | unexpr', &collect_to_a
 
 	rule 'unexpr : MINUS primexpr
 				 	 | EXCLAMATION primexpr
-				 	 | primexpr'
+				 	 | primexpr', &collect_to_a
 
 	rule 'lvalueexpr : ID LBRACKET expr RBRACKET
-						  | ID'
+						  | ID', &collect_to_a
 
 	rule 'primexpr : ID LPAREN listexpr RPAREN
 						| ID LPAREN RPAREN
@@ -254,10 +256,12 @@ class CafezinhoParse < Rly::Yacc
 						| ID
 						| CARCONST
 						| INTCONST
-						| LPAREN expr RPAREN'
+						| LPAREN expr RPAREN', &collect_to_a
 
 	rule 'listexpr : assignexpr
-						| listexpr COMMA assignexpr'
+						| listexpr COMMA assignexpr', &collect_to_a
+
+	# -----------------------------------------
 
 	#store_grammar 'grammar.txt'
 end
@@ -269,15 +273,6 @@ text_file_path = ARGV.first
 
 str = File.read("#{text_file_path}")
 
-#str = 'programa{}'
-
-#=begin
-parser = CafezinhoParse.new(CafezinhoLex.new)
-
-parser.parse(str, true)
-#=end
-
-=begin
 lex = CafezinhoLex.new(str)
 
 loop do
@@ -287,8 +282,11 @@ loop do
 		break
 	end
 
-	puts "'#{t}' : #{t.type}"
+	#puts "'#{t}' : #{t.type}"
 end
-=end
+
+parser = CafezinhoParse.new(lex)
+
+parser.parse(str, true)
 
 # --------------------------------------------
