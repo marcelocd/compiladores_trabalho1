@@ -18,6 +18,7 @@
 # REQUIREMENTS -------------------------------
 require "rly"
 require "rly/helpers"
+#require "byebug"
 
 # --------------------------------------------
 
@@ -38,13 +39,13 @@ class CafezinhoLex < Rly::Lex
 	end
 
 	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do nil end
-	
-	token :UNFINISHEDCOMMENT, /\/\*.*/ do  |t|
+
+	token :UNFINISHEDCOMMENT, /\/\*.*/ do 
 		puts "ERRO: COMENTARIO NAO TERMINA (linha #{current_line})"
 
 		t.lexer.pos += 1
 
-		nil
+		nil 
 	end
 
 	token :PLUS, /\+/
@@ -123,7 +124,11 @@ class CafezinhoLex < Rly::Lex
 
 	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/
 
-	token :STRINGCONST, /\"[^\"]*\"/
+	token :STRINGCONST, /\"[^\"]*\"/ do |t|
+		if t.value.match(/\n/)
+			puts "ERRO: CADEIA DE CARACTERES POSSUI QUEBRA DE LINHA (linha #{current_line})"
+		end
+	end
 
 	token :INTCONST, /\d+/ do |t|
 		t.value = t.value.to_i
@@ -131,17 +136,14 @@ class CafezinhoLex < Rly::Lex
 	end
 
 	token :CARCONST, /[a-zA-Z]/
-
-	token :EPSILON, //
-
 	# -----------------------------------------
 
-	on_error do |t|
-	   puts "ERRO: CARACTER INVALIDO (linha #{current_line}: '#{t.value}')"
+	on_error do 
+		puts "ERRO: CARACTER INVALIDO (linha #{current_line}: '#{t.value}')"
 
-	   t.lexer.pos += 1
+		t.lexer.pos += 1
 
-	   nil
+		nil
 	end
 end
 
@@ -151,8 +153,8 @@ end
 class CafezinhoParse < Rly::Yacc
 	# PRECEDENCE ------------------------------
 	precedence :left,  'LPAREN', 'RPAREN'
-	#precedence :left,  'LBRACKET', 'RBRACKET'
-	#precedence :left,  'LBRACE', 'RBRACE'
+	precedence :left,  'LBRACKET', 'RBRACKET'
+	precedence :left,  'LBRACE', 'RBRACE'
 	precedence :left,  'E', 'OU'
 	precedence :left,  'GREATER', 'LESS', 'GEQ', 'LEQ', 'EQUAL', 'DIFFERENT'
 	precedence :left,  'PLUS', 'MINUS'
@@ -166,19 +168,19 @@ class CafezinhoParse < Rly::Yacc
 
 	rule 'declfuncvar : tipo ID declvar SEMICOLON declfuncvar
 							| tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON declfuncvar
-							| tipo ID declfunc declfuncvar', &assign_rhs
-	rule 'declfuncvar : ', &assign_rhs
+							| tipo ID declfunc declfuncvar
+							| ', &assign_rhs
 
 	rule 'declprog : PROGRAMA bloco', &assign_rhs
 	
 	rule 'declvar : COMMA ID declvar
-					  | COMMA ID LBRACKET INTCONST RBRACKET declvar', &assign_rhs
-	rule 'declvar : ', &assign_rhs
+					  | COMMA ID LBRACKET INTCONST RBRACKET declvar
+					  | ', &assign_rhs
 	
 	rule 'declfunc : LPAREN listaparametros RPAREN bloco', &assign_rhs
 
-	rule 'listaparametros : listaparametroscont', &assign_rhs
-	rule 'listaparametros : ', &assign_rhs
+	rule 'listaparametros : listaparametroscont
+								 | ', &assign_rhs
 
 	rule 'listaparametroscont : tipo ID
 									  | tipo ID LBRACKET RBRACKET
@@ -189,8 +191,8 @@ class CafezinhoParse < Rly::Yacc
 					| LBRACE listadeclvar RBRACE', &assign_rhs
 
 	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar
-					 		 | tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar', &assign_rhs
-	rule 'listadeclvar : ', &assign_rhs
+					 		 | tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar
+					 		 | ', &assign_rhs
 	
 	rule 'tipo : INT
 				  | CAR', &assign_rhs
@@ -273,20 +275,7 @@ text_file_path = ARGV.first
 
 str = File.read("#{text_file_path}")
 
-lex = CafezinhoLex.new(str)
-
-loop do
-	t = lex.next
-
-	if t == nil
-		break
-	end
-
-	#puts "'#{t}' : #{t.type}"
-end
-
-parser = CafezinhoParse.new(lex)
+parser = CafezinhoParse.new(CafezinhoLex.new())
 
 parser.parse(str, true)
-
 # --------------------------------------------
