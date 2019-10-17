@@ -2,7 +2,7 @@
 # Universidade Federal de Goiás    *
 # Instituto de Informática         *
 # Creation date:   10/08/19        *
-# Last updated on: 16/08/19        *
+# Last updated on: 17/08/19        *
 # Author: Marcelo Cardoso Dias     *
 # -------------------------------- */
 
@@ -162,41 +162,41 @@ class CafezinhoParse < Rly::Yacc
 	# -----------------------------------------
 
 	# RULES -----------------------------------
-	rule 'programa : declfuncvar declprog', &collect_to_a
+	rule 'programa : declfuncvar declprog', &assign_rhs
 
 	rule 'declfuncvar : tipo ID declvar SEMICOLON declfuncvar
 							| tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON declfuncvar
-							| tipo ID declfunc declfuncvar
-							| ', &collect_to_a
+							| tipo ID declfunc declfuncvar', &assign_rhs
+	rule 'declfuncvar : ', &assign_rhs
 
-	rule 'declprog : PROGRAMA bloco', &collect_to_a
+	rule 'declprog : PROGRAMA bloco', &assign_rhs
 	
 	rule 'declvar : COMMA ID declvar
-					  | COMMA ID LBRACKET INTCONST RBRACKET declvar
-					  | ', &collect_to_a
+					  | COMMA ID LBRACKET INTCONST RBRACKET declvar', &assign_rhs
+	rule 'declvar : ', &assign_rhs
 	
-	rule 'declfunc : LPAREN listaparametros RPAREN bloco', &collect_to_a
+	rule 'declfunc : LPAREN listaparametros RPAREN bloco', &assign_rhs
 
-	rule 'listaparametros : listaparametroscont
-								 | ', &collect_to_a
+	rule 'listaparametros : listaparametroscont', &assign_rhs
+	rule 'listaparametros : ', &assign_rhs
 
 	rule 'listaparametroscont : tipo ID
 									  | tipo ID LBRACKET RBRACKET
 									  | tipo ID COMMA listaparametroscont
-									  | tipo ID LBRACKET RBRACKET COMMA listaparametroscont', &collect_to_a
+									  | tipo ID LBRACKET RBRACKET COMMA listaparametroscont', &assign_rhs
 	
 	rule 'bloco : LBRACE listadeclvar listacomando RBRACE
-					| LBRACE listadeclvar RBRACE', &collect_to_a
+					| LBRACE listadeclvar RBRACE', &assign_rhs
 
 	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar
-					 		 | tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar
-					 		 | ', &collect_to_a
+					 		 | tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar', &assign_rhs
+	rule 'listadeclvar : ', &assign_rhs
 	
 	rule 'tipo : INT
-				  | CAR', &collect_to_a
+				  | CAR', &assign_rhs
 
 	rule 'listacomando : comando
-	                   | comando listacomando', &collect_to_a
+	                   | comando listacomando', &assign_rhs
 
 	rule 'comando : SEMICOLON
 					  | expr SEMICOLON
@@ -208,47 +208,47 @@ class CafezinhoParse < Rly::Yacc
 					  | SE LPAREN expr RPAREN ENTAO comando
 					  | SE LPAREN expr RPAREN ENTAO comando SENAO comando
 					  | ENQUANTO LPAREN expr RPAREN EXECUTE comando
-					  | bloco', &collect_to_a
+					  | bloco', &assign_rhs
 	
-	rule 'expr : assignexpr', &collect_to_a
+	rule 'expr : assignexpr', &assign_rhs
 
 	rule 'assignexpr : condexpr
-						  | lvalueexpr ATTRIBUTION assignexpr', &collect_to_a
+						  | lvalueexpr ATTRIBUTION assignexpr', &assign_rhs
 
 	rule 'condexpr : orexpr
-					   | orexpr QUESTIONMARK expr COLON condexpr', &collect_to_a
+					   | orexpr QUESTIONMARK expr COLON condexpr', &assign_rhs
 
 	rule 'orexpr : orexpr OU andexpr
-					 | andexpr', &collect_to_a
+					 | andexpr', &assign_rhs
 
 	rule 'andexpr : andexpr E eqexpr
-					  | eqexpr', &collect_to_a
+					  | eqexpr', &assign_rhs
 
 	rule 'eqexpr : eqexpr EQUAL desigexpr
 					 | eqexpr DIFFERENT desigexpr
-					 | desigexpr', &collect_to_a
+					 | desigexpr', &assign_rhs
 
 	rule 'desigexpr : desigexpr LESS addexpr
 						 | desigexpr GREATER addexpr
 						 | desigexpr GEQ addexpr
 						 | desigexpr LEQ addexpr
-						 | addexpr', &collect_to_a
+						 | addexpr', &assign_rhs
 
 	rule 'addexpr : addexpr PLUS mulexpr
 					  | addexpr MINUS mulexpr
-					  | mulexpr', &collect_to_a
+					  | mulexpr', &assign_rhs
 
 	rule 'mulexpr : mulexpr MULT unexpr
 					 	| mulexpr DIV unexpr
 					 	| mulexpr PERCENT unexpr
-				 	   | unexpr', &collect_to_a
+				 	   | unexpr', &assign_rhs
 
 	rule 'unexpr : MINUS primexpr
 				 	 | EXCLAMATION primexpr
-				 	 | primexpr', &collect_to_a
+				 	 | primexpr', &assign_rhs
 
 	rule 'lvalueexpr : ID LBRACKET expr RBRACKET
-						  | ID', &collect_to_a
+						  | ID', &assign_rhs
 
 	rule 'primexpr : ID LPAREN listexpr RPAREN
 						| ID LPAREN RPAREN
@@ -256,10 +256,10 @@ class CafezinhoParse < Rly::Yacc
 						| ID
 						| CARCONST
 						| INTCONST
-						| LPAREN expr RPAREN', &collect_to_a
+						| LPAREN expr RPAREN', &assign_rhs
 
 	rule 'listexpr : assignexpr
-						| listexpr COMMA assignexpr', &collect_to_a
+						| listexpr COMMA assignexpr', &assign_rhs
 
 	# -----------------------------------------
 
