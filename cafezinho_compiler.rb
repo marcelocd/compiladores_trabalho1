@@ -2,7 +2,7 @@
 # Universidade Federal de Goiás    *
 # Instituto de Informática         *
 # Creation date:   10/08/19        *
-# Last updated on: 17/08/19        *
+# Last updated on: 25/08/19        *
 # Author: Marcelo Cardoso Dias     *
 # -------------------------------- */
 
@@ -18,7 +18,6 @@
 # REQUIREMENTS -------------------------------
 require "rly"
 require "rly/helpers"
-#require "byebug"
 
 # --------------------------------------------
 
@@ -39,21 +38,18 @@ class CafezinhoLex < Rly::Lex
 	end
 
 	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do nil end
-
-	token :UNFINISHEDCOMMENT, /\/\*.*/ do 
+	
+	token :UNFINISHEDCOMMENT, /\/\*.*/ do  |t|
 		puts "ERRO: COMENTARIO NAO TERMINA (linha #{current_line})"
 
 		t.lexer.pos += 1
 
-		nil 
+		nil
 	end
 
 	token :PLUS, /\+/
-
 	token :MINUS, /-/
-
 	token :MULT, /\*/
-
 	token :DIV, /\//
 
 	token :QUESTIONMARK, /\?/
@@ -63,72 +59,46 @@ class CafezinhoLex < Rly::Lex
 	token :PERCENT, /%/
 
 	token :EQUAL, /==/
-
 	token :DIFFERENT, /!=/
-
 	token :ATTRIBUTION, /=/
-
 	token :GEQ, />=/
-
 	token :GREATER, />/
-
 	token :LEQ, /<=/
-
 	token :LESS, /</
-
 	token :COMMA, /,/
-
 	token :COLON, /:/
 
 	token :SEMICOLON, /;/
 
 	token :LPAREN, /\(/
-
 	token :RPAREN, /\)/
-
 	token :LBRACKET, /\[/
-
 	token :RBRACKET, /\]/
-
 	token :LBRACE, /\{/
-
 	token :RBRACE, /\}/
 
 	token :PROGRAMA, /programa/
-
 	token :RETORNE, /retorne/
-
 	token :LEIA, /leia/
-
 	token :ESCREVA, /escreva/
-
 	token :NOVALINHA, /novalinha/
-
 	token :SENAO, /senao/
-
 	token :SE, /se/
-
 	token :ENTAO, /entao/
-	
 	token :ENQUANTO, /enquanto/
-	
 	token :EXECUTE, /execute/
 	
 	token :E, /e/
-	
 	token :OU, /ou/
 
 	token :INT, /int/
-
 	token :CAR, /car/
 
 	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/
 
-	token :STRINGCONST, /\"[^\"]*\"/ do |t|
-		if t.value.match(/\n/)
-			puts "ERRO: CADEIA DE CARACTERES POSSUI QUEBRA DE LINHA (linha #{current_line})"
-		end
-	end
+	token :STRINGCONST, /\"[^\"]*\"/
+
+	#token :BADSTRING, //
 
 	token :INTCONST, /\d+/ do |t|
 		t.value = t.value.to_i
@@ -136,14 +106,15 @@ class CafezinhoLex < Rly::Lex
 	end
 
 	token :CARCONST, /[a-zA-Z]/
+
 	# -----------------------------------------
 
-	on_error do 
-		puts "ERRO: CARACTER INVALIDO (linha #{current_line}: '#{t.value}')"
+	on_error do |t|
+	   puts "ERRO: CARACTER INVALIDO (linha #{current_line}: '#{t.value}')"
 
-		t.lexer.pos += 1
+	   t.lexer.pos += 1
 
-		nil
+	   nil
 	end
 end
 
@@ -153,8 +124,8 @@ end
 class CafezinhoParse < Rly::Yacc
 	# PRECEDENCE ------------------------------
 	precedence :left,  'LPAREN', 'RPAREN'
-	precedence :left,  'LBRACKET', 'RBRACKET'
-	precedence :left,  'LBRACE', 'RBRACE'
+	#precedence :left,  'LBRACKET', 'RBRACKET'
+	#precedence :left,  'LBRACE', 'RBRACE'
 	precedence :left,  'E', 'OU'
 	precedence :left,  'GREATER', 'LESS', 'GEQ', 'LEQ', 'EQUAL', 'DIFFERENT'
 	precedence :left,  'PLUS', 'MINUS'
@@ -180,19 +151,19 @@ class CafezinhoParse < Rly::Yacc
 	rule 'declfunc : LPAREN listaparametros RPAREN bloco', &assign_rhs
 
 	rule 'listaparametros : listaparametroscont
-								 | ', &assign_rhs
+						  | ', &assign_rhs
 
 	rule 'listaparametroscont : tipo ID
-									  | tipo ID LBRACKET RBRACKET
-									  | tipo ID COMMA listaparametroscont
-									  | tipo ID LBRACKET RBRACKET COMMA listaparametroscont', &assign_rhs
+							  		  | tipo ID LBRACKET RBRACKET
+							  		  | tipo ID COMMA listaparametroscont
+							  		  | tipo ID LBRACKET RBRACKET COMMA listaparametroscont', &assign_rhs
 	
 	rule 'bloco : LBRACE listadeclvar listacomando RBRACE
 					| LBRACE listadeclvar RBRACE', &assign_rhs
 
 	rule 'listadeclvar : tipo ID declvar SEMICOLON listadeclvar
-					 		 | tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar
-					 		 | ', &assign_rhs
+					   	 | tipo ID LBRACKET INTCONST RBRACKET declvar SEMICOLON listadeclvar
+					   	 | ', &assign_rhs
 	
 	rule 'tipo : INT
 				  | CAR', &assign_rhs
@@ -275,7 +246,22 @@ text_file_path = ARGV.first
 
 str = File.read("#{text_file_path}")
 
-parser = CafezinhoParse.new(CafezinhoLex.new())
+lexer = CafezinhoLex.new()
+
+parser = CafezinhoParse.new(lexer)
 
 parser.parse(str, true)
+
+=begin
+loop do
+	t = lex.next
+
+	if t == nil
+		break
+	end
+
+	puts "'#{t}' : #{t.type}"
+end
+
+=end
 # --------------------------------------------
