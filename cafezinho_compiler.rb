@@ -2,7 +2,7 @@
 # Universidade Federal de Goiás    *
 # Instituto de Informática         *
 # Creation date:   10/08/19        *
-# Last updated on: 25/08/19        *
+# Last updated on: 11/08/19        *
 # Author: Marcelo Cardoso Dias     *
 # -------------------------------- */
 
@@ -96,9 +96,15 @@ class CafezinhoLex < Rly::Lex
 
 	token :ID, /[a-zA-Z]+[0-9a-zA-Z]*/
 
-	token :STRINGCONST, /\"[^\"]*\"/
+	token :STRINGCONST, /\"[^\n\"]*\"/
 
-	#token :BADSTRING, //
+	token :BADSTRING, /\"([^\"]*\n+[^\"]*)+\"/ do  |t|
+		puts "ERRO: COMENTARIO COM QUEBRA DE LINHA (linha #{current_line})"
+
+		t.lexer.pos += 1
+
+		nil
+	end
 
 	token :INTCONST, /\d+/ do |t|
 		t.value = t.value.to_i
@@ -242,17 +248,24 @@ end
 # --------------------------------------------
 
 # TESTING ------------------------------------
+
+#=begin
 text_file_path = ARGV.first
 
 str = File.read("#{text_file_path}")
 
-lexer = CafezinhoLex.new()
+parser = CafezinhoParse.new(CafezinhoLex.new())
 
-parser = CafezinhoParse.new(lexer)
-
-parser.parse(str, true)
+#parser.parse(str, true)
+parser.parse(str)
+#=end
 
 =begin
+str = '"comentario: asdf
+              oi"'
+
+lex = CafezinhoLex.new(str)
+
 loop do
 	t = lex.next
 
