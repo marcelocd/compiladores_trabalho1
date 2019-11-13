@@ -2,7 +2,7 @@
 # Universidade Federal de Goiás    *
 # Instituto de Informática         *
 # Creation date:   10/08/19        *
-# Last updated on: 11/08/19        *
+# Last updated on: 11/13/19        *
 # Author: Marcelo Cardoso Dias     *
 # -------------------------------- */
 
@@ -23,24 +23,22 @@ require "rly/helpers"
 
 # LEXICAL ANALYZER ---------------------------
 class CafezinhoLex < Rly::Lex
-	current_line = 1
-
 	# IGNORE ----------------------------------
 	ignore " \t"
 
 	# -----------------------------------------
 
 	# TOKENS ----------------------------------
-	token :LINEBREAK, /\n/ do
-		current_line = current_line + 1
-
+	token /\n/ do |t| 
+		t.lexer.lineno += 1
+		
 		nil
 	end
 
 	token :COMMENT, /\/\*[^\*]*\*+([^[\*\/]][^\*]*\*+)*\// do nil end
 	
 	token :UNFINISHEDCOMMENT, /\/\*.*/ do  |t|
-		puts "ERRO: COMENTARIO NAO TERMINA (linha #{current_line})"
+		puts "ERRO: COMENTARIO NAO TERMINA (linha #{(t.lexer.lineno + 1).to_s})"
 
 		t.lexer.pos += 1
 
@@ -99,7 +97,7 @@ class CafezinhoLex < Rly::Lex
 	token :STRINGCONST, /\"[^\n\"]*\"/
 
 	token :BADSTRING, /\"([^\"]*\n+[^\"]*)+\"/ do  |t|
-		puts "ERRO: COMENTARIO COM QUEBRA DE LINHA (linha #{current_line})"
+		puts "ERRO: STRING COM QUEBRA DE LINHA (linha #{(t.lexer.lineno + 1).to_s})"
 
 		t.lexer.pos += 1
 
@@ -116,7 +114,7 @@ class CafezinhoLex < Rly::Lex
 	# -----------------------------------------
 
 	on_error do |t|
-	   puts "ERRO: CARACTER INVALIDO (linha #{current_line}: '#{t.value}')"
+	   puts "ERRO: CARACTER INVALIDO (linha #{(t.lexer.lineno + 1).to_s}: '#{t.value}')"
 
 	   t.lexer.pos += 1
 
@@ -128,6 +126,7 @@ end
 
 # SYNTACTICAL ANALYZER -----------------------
 class CafezinhoParse < Rly::Yacc
+	
 	# PRECEDENCE ------------------------------
 	precedence :left,  'LPAREN', 'RPAREN'
 	#precedence :left,  'LBRACKET', 'RBRACKET'
@@ -241,6 +240,10 @@ class CafezinhoParse < Rly::Yacc
 						| listexpr COMMA assignexpr', &assign_rhs
 
 	# -----------------------------------------
+
+	my_lambda = ->(x) { puts "ERRO: '#{x.value}' (linha #{(self.lex.lineno + 1).to_s})"}
+
+	on_error(my_lambda)
 
 	#store_grammar 'grammar.txt'
 end
